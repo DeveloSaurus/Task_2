@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import Joi from 'joi';
 import { User } from '../models/User.js';
+import router from '../routes/auth.js';
 
 const registerSchema = Joi.object({
   name: Joi.string().min(2).max(60).required(),
@@ -31,7 +32,20 @@ const loginSchema = Joi.object({
 
 // TODO: implement login function
 export async function login(req, res, next) {
- 
+   try {
+    const { value, error } = loginSchema.validate(req.body);
+    if (error) return res.status(400).json({ message: error.message });
+
+    const existing = await User.findOne({ email: value.email });
+    if (!existing) return res.status(404).json({ message: 'Unregistered Email Address' });
+
+    if(!existing.passwordHash == value.password)
+      return res.status(403).json({ message: 'Incorrect Email or Password' });
+
+    const token = signToken(existing)
+    res.status(201).json({ token, user: publicUser(existing) });
+
+  } catch (err) { next(err); }
 }
 
 export async function me(req, res) {
